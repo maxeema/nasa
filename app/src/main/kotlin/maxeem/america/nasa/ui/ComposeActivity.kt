@@ -18,7 +18,10 @@ abstract class ComposeActivity : AppCompatActivity() {
     fun AppTheme(children: @Composable() () -> Unit) {
         MaterialTheme(
             colors = ColorPalette(
-                background = Color(R.color.window_background.asColor()),
+                primary = Color(R.color.colorPrimary.asColor()),
+                primaryVariant = Color(R.color.colorPrimaryDark.asColor()),
+                secondary = Color(R.color.colorAccent.asColor()),
+                background = Color(R.color.windowBackground.asColor()),
                 onBackground = Color(R.color.onBackground.asColor())
             ),
             children = children

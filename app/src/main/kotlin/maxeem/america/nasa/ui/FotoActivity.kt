@@ -22,6 +22,7 @@ import androidx.ui.graphics.Color.Companion.Gray
 import androidx.ui.graphics.Color.Companion.LightGray
 import androidx.ui.graphics.Color.Companion.Transparent
 import androidx.ui.graphics.Color.Companion.White
+import androidx.ui.graphics.toArgb
 import androidx.ui.graphics.vector.DrawVector
 import androidx.ui.layout.*
 import androidx.ui.material.Button
@@ -118,6 +119,7 @@ class FotoActivity : ComposeActivity() {
                 it.clear()
             }
             invalidateOptionsMenu()
+            tryAutoFullscreen(resetUserAction = true)
         }
 
         fotoModel.date.observe(this) { state.date.value = it }
@@ -172,18 +174,7 @@ class FotoActivity : ComposeActivity() {
 
         (args?.fullscreen ?: state.fullscreen.value) tru {
             fotoModel.enterFullscreen()
-        } ?: {
-            autoLoad tru {
-                actionsOnFotoLoad[Fullscreen] = {
-                    lifecycleScope.launchWhenStarted {
-                        delay(3000)
-                        (fullscreen.isnil() && !hasUserAction) tru {
-                            fotoModel.enterFullscreen()
-                        }
-                    }
-                }
-            }
-        }()
+        }
     }
 
     @Composable
@@ -253,11 +244,11 @@ class FotoActivity : ComposeActivity() {
                             Row {
                                 listOf(
                                     R.drawable.ic_share,
-                                    R.drawable.ic_save,
-                                    R.drawable.ic_launch,
-                                    R.drawable.ic_description
+                                    R.drawable.ic_sd_storage,
+                                    R.drawable.ic_photo,
+                                    R.drawable.ic_details
                                 ).forEach { id ->
-                                    Action(id, (id == R.drawable.ic_save) tru { saveModel.isExecuting.not() } ?: true)
+                                    Action(id, (id == R.drawable.ic_sd_storage) tru { saveModel.isExecuting.not() } ?: true)
                                 }
                             }
                         }
@@ -299,13 +290,11 @@ class FotoActivity : ComposeActivity() {
 
     @Composable
     fun Bg() {
-        palette?.let {
-            Surface(color = Color(it.rgb)) { }
-        }
+        Surface(color = Color(palette?.rgb ?: colors.background.toArgb() )) { }
         Clickable(
             onClick = {
                 fotoModel.foto?.also {
-                    processAction(R.drawable.ic_launch)
+                    processAction(R.drawable.ic_photo)
                 }
             }
         ) {
@@ -620,20 +609,32 @@ class FotoActivity : ComposeActivity() {
                         .setType("image/*")
                         .startChooser()
                 }
-            R.drawable.ic_description ->
-                fotoModel.foto!!.also { foto ->
+            R.drawable.ic_details ->
+                fotoModel.foto?.also { foto ->
                     showMsg(foto.apod.title, foto.apod.description)
                 }
-            R.drawable.ic_launch -> start<FotoViewActivity>()
-            R.drawable.ic_save -> saveWithPermissionCheck()
+            R.drawable.ic_photo -> start<FotoViewActivity>()
+            R.drawable.ic_sd_storage -> saveWithPermissionCheck()
         }
     }
 
-    override fun onUserInteraction() {
-        super.onUserInteraction()
+    private fun tryAutoFullscreen(resetUserAction: Bool = false) {
+        resetUserAction tru {
+            hasUserAction = false
+        }
+        lifecycleScope.launchWhenStarted {
+            delay(3000)
+            (fullscreen.isnil() && !hasUserAction) tru {
+                fotoModel.enterFullscreen()
+            }
+        }
+    }
+
+    override fun onUserInteraction() { super.onUserInteraction()
         lg { "user interaction" }
         hasUserAction = true
     }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Bool {
         if (state.fullscreen.value) {
             processAction(R.drawable.ic_fullscreen_exit)

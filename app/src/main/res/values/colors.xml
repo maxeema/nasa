@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
+
+    <color name="colorPrimary">@color/nasaColorBlue</color>
+    <color name="colorPrimaryDark">@color/nasaColorBlueDark</color>
+    <color name="colorPrimaryLight">@color/nasaColorBlueLight</color>
+    <color name="colorOnPrimary">@color/nasaColorWhite</color>
+    <color name="colorAccent">@color/nasaColorRed</color>
 
     <color name="ic_menu_item_color">#ccFFFFFF</color>
 
-    <color name="window_background">#6f6f6f</color>
-    <color name="onBackground">#efefef</color>
+    <color name="windowBackground">#ff121212</color>
+    <color name="onBackground">@color/nasaColorWhite</color>
+
 </resources>

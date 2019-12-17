@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="nasaColorBlue">#0D3D91</color>
+    <color name="nasaColorBlueDark">#001862</color>
+    <color name="nasaColorBlueLight">#5067c2</color>
+    <color name="nasaColorRed">#FC3B29</color>
+    <color name="nasaColorRedDark">#c00000</color>
+    <color name="nasaColorRedLight">#ff7355</color>
+    <color name="nasaColorWhite">#F6FDFE</color>
+
+</resources>

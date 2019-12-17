@@ -1,7 +1,5 @@
 package maxeem.america.nasa.ui
 
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -16,7 +14,6 @@ class FotoViewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         FotoViewModel.foto?.also { foto ->
             setContentView(SubsamplingScaleImageView(this).apply {
-                background = ColorDrawable(Color.parseColor("#ff121212"))
                 lifecycleScope.launchWhenStarted {
                     setImage(ImageSource.bitmap(foto.image.bitmap))
                 }

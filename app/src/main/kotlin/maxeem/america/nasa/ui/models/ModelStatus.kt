@@ -1,7 +1,7 @@
 package maxeem.america.nasa.ui.models
 
-import maxeem.america.nasa.misc.AppException
 import maxeem.america.common.Str
+import maxeem.america.nasa.misc.AppException
 
 sealed class ModelStatus(val name: Str) {
 

@@ -33,4 +33,6 @@ Day Picture screen
 
 ![Screenshot4](screenshots/NASA%20Pics%20-%20screen%204.png)
 
+![Screenshot6](screenshots/NASA%20Pics%20-%20screen%206.png)
+
 © Maxeem America, 2019
