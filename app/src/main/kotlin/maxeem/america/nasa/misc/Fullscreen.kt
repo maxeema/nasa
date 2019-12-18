@@ -1,29 +1,30 @@
 package maxeem.america.nasa.misc
 
+import android.app.AlertDialog
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
-import maxeem.america.common.Bool
 import maxeem.america.nasa.ext.lg
 
 data class Fullscreen private constructor(
     val systemUiVisibility: Int,
-    val showActionbar: Bool,
     val windowAttributesFlags: Int
 ) {
 
-    fun backOn(a: AppCompatActivity) = Companion.backOn(a, this)
+    fun backOn(window: Window) = Companion.backOn(window, this)
 
     companion object {
-        fun enterOn(a: AppCompatActivity): Fullscreen {
+        fun enterOn(a: AppCompatActivity) = a.window?.let { w -> enterOn(w) }
+        fun enterOn(a: AlertDialog) = a.window?.let { w -> enterOn(w) }
+        fun enterOn(window: Window): Fullscreen {
             lg { "fullscreen enter on"}
-            with(a) {
                 val view = window.decorView.findViewById<ViewGroup>(android.R.id.content)
                     ?: window.decorView
                 val winParams = window.attributes
 
-                val restore = Fullscreen(view.systemUiVisibility, supportActionBar?.isShowing ?: false, winParams.flags)
+                val restore = Fullscreen(view.systemUiVisibility, winParams.flags)
 
                 view.systemUiVisibility =
                     View.SYSTEM_UI_FLAG_LOW_PROFILE or View.SYSTEM_UI_FLAG_IMMERSIVE or
@@ -33,27 +34,19 @@ data class Fullscreen private constructor(
                 winParams.flags = winParams.flags or WindowManager.LayoutParams.FLAG_FULLSCREEN
                 window.attributes = winParams
 
-                supportActionBar?.hide()
-
                 return restore
-            }
         }
 
-        fun backOn(a: AppCompatActivity, restore: Fullscreen) {
+        fun backOn(window: Window, restore: Fullscreen) {
             lg { "fullscreen back on, $restore"}
-            with(a) {
-                val view = window.decorView.findViewById<ViewGroup>(android.R.id.content)
-                    ?: window.decorView
-                val winParams = window.attributes
+            val view = window.decorView.findViewById<ViewGroup>(android.R.id.content)
+                ?: window.decorView
+            val winParams = window.attributes
 
-                view.systemUiVisibility = restore.systemUiVisibility
+            view.systemUiVisibility = restore.systemUiVisibility
 
-                winParams.flags = restore.windowAttributesFlags
-                window.attributes = winParams
-
-                if (restore.showActionbar)
-                    supportActionBar?.show()
-            }
+            winParams.flags = restore.windowAttributesFlags
+            window.attributes = winParams
         }
     }
 }

@@ -3,13 +3,14 @@ package maxeem.america.nasa.ext
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.os.Environment
 import android.widget.Toast
+import maxeem.america.common.Str
 import maxeem.america.nasa.R
 import maxeem.america.nasa.app
-import maxeem.america.common.Str
 import maxeem.america.nasa.misc.AppException
 import maxeem.america.nasa.ui.ComposeActivity
 import java.io.File
@@ -39,14 +40,20 @@ fun ComposeActivity.handleError(error: AppException) {
     Toast.makeText(this, error.msg, Toast.LENGTH_SHORT).show()
 }
 
-fun ComposeActivity.selectDate(calendar: Calendar?, onSelected: (result: Calendar)->Unit) {
+fun ComposeActivity.selectDate(calendar: Calendar?,
+                               onShow: ((DialogInterface)->Unit)? = null,
+                               onDismiss: ((DialogInterface)->Unit)? = null,
+                               onSelected: (result: Calendar)->Unit) {
     val c = calendar ?: Calendar.getInstance()
     DatePickerDialog(this, DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
         onSelected(Calendar.getInstance().apply {
             clear()
             set(year, month, dayOfMonth)
         })
-    }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+    }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).apply {
+        setOnShowListener(onShow)
+        setOnDismissListener(onDismiss)
+    }.show()
 }
 
 fun ComposeActivity.onWriteAvailable(path: File?, onSuccess: (toDir: File)->Unit) {

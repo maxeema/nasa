@@ -20,6 +20,7 @@ abstract class ComposeActivity : AppCompatActivity() {
             colors = ColorPalette(
                 primary = Color(R.color.colorPrimary.asColor()),
                 primaryVariant = Color(R.color.colorPrimaryDark.asColor()),
+                onPrimary = Color(R.color.colorOnPrimary.asColor()),
                 secondary = Color(R.color.colorAccent.asColor()),
                 background = Color(R.color.windowBackground.asColor()),
                 onBackground = Color(R.color.onBackground.asColor())

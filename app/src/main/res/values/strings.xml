@@ -4,7 +4,7 @@
     <string name="gallery">Gallery</string>
     <string name="hd">HD</string>
     <string name="date_param">Date</string>
-    <string name="load">Load</string>
+    <string name="reload">Reload</string>
     <string name="info">Info</string>
     <string name="welcome">Welcome to NASA pictures</string>
     <string name="save">Save</string>
@@ -16,6 +16,7 @@
     <string name="unsupported_media">Unsupported media \"%s\"</string>
     <string name="loading">Loading</string>
     <string name="saving">Saving</string>
+    <string name="executing">Executing</string>
     <string name="open">Open</string>
     <string name="share">Share</string>
     <string name="fullscreen">Fullscreen</string>

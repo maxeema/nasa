@@ -2,7 +2,6 @@ package maxeem.america.nasa.ui
 
 import android.content.Intent
 import android.os.Bundle
-import maxeem.america.common.Bool
 import maxeem.america.common.Str
 import maxeem.america.nasa.ext.start
 import maxeem.america.nasa.misc.ImagePalette
@@ -16,9 +15,9 @@ object Launcher {
         fun forget(intent: Intent) = intent.removeExtra(KEY)
     }
 
-    fun launchFotoActivity(ctx: ComposeActivity, date: Str, fullscreen: Bool, palette: ImagePalette?) {
+    fun launchFotoActivity(ctx: ComposeActivity, date: Str, palette: ImagePalette?) {
         Bundle().apply {
-            putParcelable(Extras.KEY, FotoActivity.Args(date, fullscreen, palette))
+            putParcelable(Extras.KEY, FotoActivity.Args(date, palette))
             ctx.start<FotoActivity>(this)
         }
     }

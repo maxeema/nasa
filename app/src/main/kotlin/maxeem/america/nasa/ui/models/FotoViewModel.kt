@@ -2,7 +2,6 @@ package maxeem.america.nasa.ui.models
 
 import androidx.lifecycle.MutableLiveData
 import maxeem.america.common.Bool
-import maxeem.america.common.ConsumableEvent
 import maxeem.america.common.ConsumableLiveData
 import maxeem.america.common.Str
 import maxeem.america.nasa.R
@@ -15,6 +14,11 @@ import java.util.*
 
 class FotoViewModel : RepoViewModel() {
 
+    enum class Ui {
+        Clear,
+        Detailed;
+    }
+
     companion object Cached {
         var foto : Foto? = null
             private set
@@ -25,33 +29,37 @@ class FotoViewModel : RepoViewModel() {
     }
 
     val fotoEvent = ConsumableLiveData<Foto>()
-    var foto : Foto?
-        get() = Cached.foto
+    var foto : Foto? = null
         private set(value: Foto?) {
+            field = value;
             Cached.foto = value
+            value?.also { fotoEvent.set(value) }
         }
 
     val hd = MutableLiveData(true).asImmutable()
     val date = MutableLiveData<Calendar>().asImmutable()
 
-    val fullscreenEvent = ConsumableEvent().asImmutable()
-    var fullscreen : Bool = false
-        private set
-
-    fun enterFullscreen() = enterFullscreen(true)
-    fun exitFullscreen() = enterFullscreen(false)
-    private fun enterFullscreen(value: Bool) {
-        fullscreen = value
-        fullscreenEvent.asConsumable().setValue(value)
+    val uiEvent = ConsumableLiveData<Ui>()
+    var ui = Ui.Clear
+        private set(value) {
+            field = value
+            uiEvent.set(value)
+        }
+    fun onSwitchUi(to: Ui? = null) {
+        ui = to ?: when (ui) {
+            Ui.Detailed -> Ui.Clear
+            Ui.Clear -> Ui.Detailed
+        }
     }
 
     private fun loadImpl(date: Str?, hd: Bool, failure: ((AppException)->Unit)? = null, success: (()->Unit) = { }) {
         action(
-            call = { UseCases.loadFoto(date) },
+            call = {
+                UseCases.loadFoto(date)
+            },
             success = {
                 val (apod, newFoto) = it
                 foto = newFoto
-                fotoEvent.set(newFoto)
                 apod.date.toApiCalendar()?.also {
                     this@FotoViewModel.date.asMutable().value = it
                 }

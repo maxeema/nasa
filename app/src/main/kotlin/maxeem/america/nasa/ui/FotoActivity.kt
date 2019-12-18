@@ -1,5 +1,6 @@
 package maxeem.america.nasa.ui
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Environment
 import android.os.Parcelable
@@ -13,13 +14,14 @@ import androidx.core.app.ShareCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.ui.animation.Crossfade
-import androidx.ui.core.*
+import androidx.ui.core.Text
+import androidx.ui.core.dp
+import androidx.ui.core.setContent
 import androidx.ui.foundation.Clickable
 import androidx.ui.foundation.DrawImage
+import androidx.ui.foundation.VerticalScroller
 import androidx.ui.graphics.Color
 import androidx.ui.graphics.Color.Companion.Black
-import androidx.ui.graphics.Color.Companion.Gray
-import androidx.ui.graphics.Color.Companion.LightGray
 import androidx.ui.graphics.Color.Companion.Transparent
 import androidx.ui.graphics.Color.Companion.White
 import androidx.ui.graphics.toArgb
@@ -35,17 +37,18 @@ import androidx.ui.res.vectorResource
 import androidx.ui.text.font.FontWeight
 import androidx.ui.text.style.TextOverflow
 import kotlinx.android.parcel.Parcelize
-import kotlinx.coroutines.delay
 import maxeem.america.common.Bool
 import maxeem.america.common.Consumable
 import maxeem.america.common.Str
 import maxeem.america.nasa.R
 import maxeem.america.nasa.domain.MediaType
 import maxeem.america.nasa.ext.*
+import maxeem.america.nasa.misc.Foto
 import maxeem.america.nasa.misc.Fullscreen
 import maxeem.america.nasa.misc.ImagePalette
 import maxeem.america.nasa.ui.models.FotoSaveViewModel
 import maxeem.america.nasa.ui.models.FotoViewModel
+import maxeem.america.nasa.ui.models.FotoViewModel.Ui
 import maxeem.america.nasa.ui.models.ModelStatus
 import maxeem.america.nasa.ui.states.FotoState
 import maxeem.america.nasa.ui.states.UiKeysState
@@ -59,26 +62,23 @@ class FotoActivity : ComposeActivity() {
 
     @Parcelize
     data class Args(
-        val date: Str, val fullscreen: Bool, val palette: ImagePalette?
+        val date: Str, val palette: ImagePalette?
     ) : Parcelable
 
-    private enum class UiKeys { fullscreen, prev, next }
-    private enum class UiOverflowKeys { overflow }
+    private enum class UiKeys { prev, open, next }
 
     private val fotoModel: FotoViewModel by viewModels()
     private val saveModel: FotoSaveViewModel by viewModels()
 
     private lateinit var state: FotoState
     private lateinit var busyTik: State<Int>
-    private lateinit var uiKeysState: UiKeysState<UiKeys, Bool>
-    private lateinit var uiOverflowState: UiKeysState<UiOverflowKeys, Bool>
-    private var fullscreen: Fullscreen? = null
     private var autoLoad: Bool = true
     private var args: Args? = null
     private val actionsOnFotoLoad : MutableMap<Any, ()->Unit> = mutableMapOf()
-    private var hasUserAction = false
 
     private val palette get() = state.foto.value?.image?.palette ?: args?.palette
+
+    private lateinit var uiKeysState: UiKeysState<UiKeys, Bool>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,7 +93,6 @@ class FotoActivity : ComposeActivity() {
             busyTik = +state { 0 }
             state = fotoModel.createState()
             uiKeysState = UiKeysState(*UiKeys.values())
-            uiOverflowState = UiKeysState(*UiOverflowKeys.values())
             AppTheme {
                 Content()
             }
@@ -119,16 +118,31 @@ class FotoActivity : ComposeActivity() {
                 it.clear()
             }
             invalidateOptionsMenu()
-            tryAutoFullscreen(resetUserAction = true)
         }
 
         fotoModel.date.observe(this) { state.date.value = it }
         fotoModel.hd.observe(this) { state.hd.value = it }
 
+        fotoModel.uiEvent.observe(this) {
+            val value = it.consume() ?: return@observe
+            state.ui.value = value
+            when (value) {
+                Ui.Clear ->
+                    state.busy.value fals {
+                        uiKeysState.start(lifecycleScope, initial = true, final = false, finalDelay = 500L)
+                    }
+                else ->
+                    uiKeysState.reset()
+            }
+        }
+
         val stateListener : (Consumable<ModelStatus>)->Unit = code@  {
             val status = it.consume() ?: return@code
             lg { "status $status" }
-            state.busy.value = status.isBusy
+            state.busy.value = fotoModel.isExecuting || saveModel.isExecuting
+            state.busy.value tru {
+                uiKeysState.reset()
+            }
             status.isBad.tru {
                 handleError(status.bad)
             }
@@ -137,28 +151,6 @@ class FotoActivity : ComposeActivity() {
         }
         fotoModel.statusEvent.observe(this, stateListener)
         saveModel.statusEvent.observe(this, stateListener)
-
-        fotoModel.fullscreenEvent.observe(this) {
-            val value = it.consume() ?: return@observe
-            if (value && fullscreen.notnil())
-                return@observe
-            state.fullscreen.value = value
-            when (value) {
-                true -> {
-                    fullscreen = Fullscreen.enterOn(this)
-                    val uiKeysStateAction = { uiKeysState.start(lifecycleScope, initial = true, final = false) }
-                    fotoModel.foto nil {
-                        actionsOnFotoLoad[uiKeysState] = uiKeysStateAction
-                    } ?: uiKeysStateAction()
-                }
-                else -> {
-                    actionsOnFotoLoad.remove(UiKeys.fullscreen)
-                    fullscreen?.backOn(this)?.also {
-                        fullscreen = null
-                    }
-                }
-            }
-        }
 
         val tikListener = code@ { it: Consumable<Int> ->
             busyTik.value = it.consume() ?: return@code
@@ -172,8 +164,10 @@ class FotoActivity : ComposeActivity() {
             }
         }
 
-        (args?.fullscreen ?: state.fullscreen.value) tru {
-            fotoModel.enterFullscreen()
+        state.foto.value nil {
+            actionsOnFotoLoad[uiKeysState] = {
+                uiKeysState.start(lifecycleScope, initial = true, final = false, finalDelay = 500L)
+            }
         }
     }
 
@@ -184,26 +178,25 @@ class FotoActivity : ComposeActivity() {
             expanded(1F) {
                 Foto()
             }
-            inflexible {
-                Bottom()
-            }
         }
-        Top()
         Status()
         Controls()
+        Atop()
     }
 
     @Composable
-    fun Top() {
-        val overflow = uiOverflowState[UiOverflowKeys.overflow]?.value ?: false
-        if (state.fullscreen.value.not() && (state.foto.value.notnil() || overflow)) {
-            Container(alignment = Alignment.TopLeft) {
-                Surface(elevation = 2.dp, color = colors.primary) {
-                    Clickable(onClick = { /* consume clicks */}) {
+    fun Atop() {
+        val foto = state.foto.value
+        if (state.ui.detailed && foto != null) {
+            Container(modifier = Expanded) {
+                Surface(elevation = 1.dp, color = Black.copy(75F) ) {
+                    Clickable(onClick = { fotoModel.onSwitchUi(to = Ui.Clear) } ) {
                         Padding(
-                            padding = EdgeInsets(left = 16.dp, right = 8.dp, top = 10.dp, bottom = 10.dp)
+                            padding = EdgeInsets(left = 16.dp, right = 16.dp, top = 24.dp, bottom = 24.dp)
                         ) {
-                            TopAppbar()
+                            Crossfade(foto) {
+                                Description(it)
+                            }
                         }
                     }
                 }
@@ -212,75 +205,87 @@ class FotoActivity : ComposeActivity() {
     }
 
     @Composable
-    fun TopAppbar() {
-        Crossfade(uiOverflowState[UiOverflowKeys.overflow]?.value?.not() ?: true) {
-            when (it) {
-                true ->
-                    FlexRow(
-                        crossAxisAlignment = CrossAxisAlignment.Center
-                    ) {
-                        expanded(1F) {
-                            Text(text = fotoModel.foto!!.apod.title,
-                                maxLines = 2,
+    fun Description(foto: Foto) {
+        FlexColumn(
+            crossAxisSize = LayoutSize.Expand,
+            mainAxisAlignment = MainAxisAlignment.SpaceEvenly,
+            crossAxisAlignment = CrossAxisAlignment.Stretch
+        ) {
+            inflexible {
+                Text(
+                    text = foto.apod.title,
+                    style = typography.h4.copy(
+                        color = colors.onPrimary,
+                        fontWeight = FontWeight.W300
+                    )
+                )
+            }
+            inflexible {
+                HeightSpacer(8.dp)
+            }
+            inflexible {
+                Text(
+                    text = foto.apod.date,
+                    style = typography.subtitle2.copy(
+                        color = colors.onPrimary.copy(alpha = 125F)
+                    )
+                )
+            }
+            inflexible {
+                HeightSpacer(16.dp)
+            }
+            flexible(flex = 1F) {
+                foto.apod.description?.also { description ->
+                    VerticalScroller {
+                        Clickable(onClick = { fotoModel.onSwitchUi(to = Ui.Clear) }) {
+                            Text(
+                                text = description,
                                 overflow = TextOverflow.Fade,
-                                style = typography.h6
+                                style = typography.body1.copy(
+                                    color = colors.onPrimary.copy(alpha = 55F)
+                                )
                             )
-                        }
-                        inflexible {
-                            Action(R.drawable.ic_fullscreen, true)
-                            OverflowAction()
                         }
                     }
-                else ->
-                    FlexRow(
-                        crossAxisAlignment = CrossAxisAlignment.Center
-                    ) {
-                        expanded(1F) {
-                            Text(text = " ",
-                                style = typography.h6.copy(fontWeight = FontWeight.W200)
-                            )
-                        }
-                        inflexible {
-                            Row {
-                                listOf(
-                                    R.drawable.ic_share,
-                                    R.drawable.ic_sd_storage,
-                                    R.drawable.ic_photo,
-                                    R.drawable.ic_details
-                                ).forEach { id ->
-                                    Action(id, (id == R.drawable.ic_sd_storage) tru { saveModel.isExecuting.not() } ?: true)
-                                }
+                }
+            }
+            inflexible {
+                HeightSpacer(16.dp)
+            }
+            inflexible {
+                Row(
+                    modifier = ExpandedWidth,
+                    arrangement = Arrangement.SpaceEvenly
+                ) {
+                    WidthSpacer(24.dp)
+                    listOf(
+                        R.drawable.ic_share,
+                        R.drawable.ic_calendar_today,
+                        R.drawable.ic_sd_storage
+                    ).forEach { id ->
+                        Action(id,
+                            enabled = when(id) {
+                                R.drawable.ic_sd_storage -> saveModel.isExecuting.not()
+                                R.drawable.ic_calendar_today -> fotoModel.isExecuting.not()
+                                else -> true
                             }
-                        }
+                        )
+                        WidthSpacer(16.dp)
                     }
-
+                }
             }
         }
     }
+
     @Composable
     fun Action(id: Int, enabled: Bool) {
         Ripple(true, enabled = enabled) {
-            Clickable(onClick = enabled tru { { processAction(id) } } ) {
+            Clickable(onClick = enabled tru { { execute(id) } } ) {
                 Padding(top = 10.dp, bottom = 10.dp) {
                     Container(modifier = androidx.ui.layout.Size(50.dp, 20.dp)) {
                         DrawVector(
                             +vectorResource(id),
-                            tintColor = White.let { enabled tru { it } ?: it.copy(alpha = 77F) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-    @Composable
-    fun OverflowAction() {
-        Ripple(true) {
-            Clickable(onClick = { processAction(R.drawable.ic_more_horiz) } ) {
-                Padding(top = 10.dp, bottom = 10.dp) {
-                    Container(modifier = androidx.ui.layout.Size(32.dp, 20.dp)) {
-                        DrawVector(
-                            +vectorResource(R.drawable.ic_more_horiz),
-                            tintColor = White
+                            tintColor = Color(R.color.ic_menu_item_color.asColor()).let { enabled tru { it } ?: it.copy(alpha = 155F) }
                         )
                     }
                 }
@@ -294,7 +299,7 @@ class FotoActivity : ComposeActivity() {
         Clickable(
             onClick = {
                 fotoModel.foto?.also {
-                    processAction(R.drawable.ic_photo)
+                    fotoModel.onSwitchUi(to = Ui.Detailed)
                 }
             }
         ) {
@@ -315,27 +320,27 @@ class FotoActivity : ComposeActivity() {
     fun Status() {
         val busy = state.busy.value || autoLoad
         val foto = state.foto.value
-        (busy || foto.isnil()) tru {
-            when (busy) {
-                true -> Center {
-                    Crossfade(busy) {
-                        Opacity(opacity = 0.8F) {
-                            Progress()
+        when {
+            busy ->
+                Center {
+                    Crossfade(state.ui.clear) {
+                        when (it) {
+                            true ->
+                                Progress()
                         }
                     }
                 }
-                else -> foto.isnil() tru {
-                    Center {
-                        Opacity(opacity = 0.8F) {
-                            Button(
-                                text = R.string.load.asString(),
-                                onClick = fotoModel::load
-                            )
-                        }
-                    }
-
+            foto.isnil() ->
+                Center {
+                    Button(
+                        text = R.string.reload.asString(),
+                        onClick = fotoModel::load,
+                        style = OutlinedButtonStyle(
+                            color = White.copy(alpha = 200F),
+                            contentColor = colors.onBackground
+                        )
+                    )
                 }
-            }
         }
     }
 
@@ -343,7 +348,7 @@ class FotoActivity : ComposeActivity() {
     fun Progress() {
         val noFoto = fotoModel.foto.isnil()
         Surface(
-            color = if (noFoto) Transparent else Black.copy(155F),
+            color = if (noFoto) Transparent else Black.copy(115F),
             elevation = 0.dp,
             modifier = Spacing(
                 top = 10.dp, bottom = 10.dp,
@@ -356,14 +361,15 @@ class FotoActivity : ComposeActivity() {
                 crossAxisAlignment = CrossAxisAlignment.Center
             ) {
                 flexible(1F) {
+                    val text = when {
+                        fotoModel.isExecuting && saveModel.isExecuting ->
+                            R.string.executing.asString()
+                        fotoModel.isExecuting -> R.string.loading.asString()
+                        saveModel.isExecuting -> R.string.saving.asString()
+                        else -> R.string.executing.asString()
+                    }
                     Text(
-                        text = when {
-                            fotoModel.isExecuting ->
-                                R.string.loading.asString().toTikString(busyTik.value)
-                            saveModel.isExecuting ->
-                                R.string.saving.asString().toTikString(busyTik.value)
-                            else -> " "
-                        },
+                        text = text.toTikString(busyTik.value),
                         style = typography.subtitle1
                             .copy(
                                 color = noFoto tru { palette?.body?.let { Color(it) } } ?: colors.onBackground,
@@ -377,47 +383,22 @@ class FotoActivity : ComposeActivity() {
 
     @Composable
     fun Controls() {
+        PlayControl()
         PrevNextControls()
         PrevNextTooltips()
-
-        when (state.fullscreen.value) {
-            true ->
-                Align(alignment = Alignment.TopRight) {
-                    Button(
-                        style = TextButtonStyle(
-                            contentColor = White.copy(alpha = 200F)
-                        ),
-                        onClick = {
-                            processAction(R.drawable.ic_fullscreen_exit)
-                        }
-                    ) {
-                        Crossfade(uiKeysState[UiKeys.fullscreen]?.value) {
-                            when (it) {
-                                true ->
-                                    Container(modifier = androidx.ui.layout.Size(114.dp, 80.dp)) {
-                                        DrawVector(
-                                            +vectorResource(R.drawable.ic_fullscreen_exit),
-                                            tintColor = White
-                                        )
-                                    }
-                                else ->
-                                    Container(modifier = androidx.ui.layout.Size(100.dp, 80.dp)) { }
-                            }
-                        }
-                    }
-                }
-            else -> when (state.foto.value?.apod?.mediaType == MediaType.YouTube && state.busy.value.not()) {
-                true -> Center {
-                    Button(
-                        onClick = { open(this, fotoModel.foto!!.apod, fotoModel.foto!!.hd) },
-                        style = ContainedButtonStyle(color = Color.Red)
-                    ) {
-                        Container(modifier = androidx.ui.layout.Size(60.dp, 36.dp)) {
-                            DrawVector(
-                                +vectorResource(R.drawable.ic_play_arrow),
-                                tintColor = White
-                            )
-                        }
+    }
+    @Composable
+    fun PlayControl() {
+        when (state.foto.value?.apod?.mediaType == MediaType.YouTube && state.busy.value.not()) {
+            true -> Center {
+                Button(
+                    style = ContainedButtonStyle(color = Color.Red)
+                ) {
+                    Container(modifier = androidx.ui.layout.Size(50.dp, 30.dp)) {
+                        DrawVector(
+                            +vectorResource(R.drawable.ic_play_arrow),
+                            tintColor = White
+                        )
                     }
                 }
             }
@@ -426,7 +407,8 @@ class FotoActivity : ComposeActivity() {
 
     @Composable
     fun PrevNextControls() {
-        (state.busy.value.not() && state.fullscreen.value) tru {
+        val foto = fotoModel.foto ?: return
+        (state.ui.clear && state.busy.value.not()) tru {
             FlexRow {
                 expanded(1F) {
                     Button(
@@ -439,8 +421,33 @@ class FotoActivity : ComposeActivity() {
                     }
                 }
                 expanded(1F) {
-                    Clickable( onClick = { processAction(R.drawable.ic_fullscreen_exit) } ) {
-                        Container(modifier = ExpandedHeight) { }
+                    Button(
+                        onClick = { fotoModel.onSwitchUi(to = Ui.Detailed) },
+                        style = TextButtonStyle(
+                            contentColor = White.copy(alpha = 200F)
+                        )
+                    ) {
+                        FlexColumn(crossAxisAlignment = CrossAxisAlignment.Stretch) {
+                            expanded(1F) { Container {} }
+                            expanded(1F) {
+                                Button(
+                                    onClick = {
+                                        when (foto.apod.mediaType) {
+                                            MediaType.YouTube ->
+                                                open(this@FotoActivity, foto.apod, foto.hd)
+                                            else ->
+                                                execute(R.drawable.ic_photo)
+                                        }
+                                    },
+                                    style = TextButtonStyle(
+                                        contentColor = White.copy(alpha = 200F)
+                                    )
+                                ) {
+                                    Container(modifier = ExpandedHeight) { }
+                                }
+                            }
+                            expanded(1F) { Container {} }
+                        }
                     }
                 }
                 expanded(1F) {
@@ -478,7 +485,26 @@ class FotoActivity : ComposeActivity() {
                 }
             }
             expanded(1F) {
-                Container { }
+                Crossfade(uiKeysState[UiKeys.open]?.value) {
+                    Center {
+                        when (it) {
+                            true ->
+                                Container(modifier = androidx.ui.layout.Size(40.dp, 40.dp)) {
+                                    DrawVector(
+                                        +vectorResource(
+                                            when (fotoModel.foto?.apod?.mediaType) {
+                                                MediaType.YouTube ->
+                                                    R.drawable.ic_play_arrow
+                                                else ->
+                                                    R.drawable.ic_photo
+                                            }
+                                        ),
+                                        tintColor = White
+                                    )
+                                }
+                        }
+                    }
+                }
             }
             expanded(1F) {
                 Crossfade(uiKeysState[UiKeys.next]?.value) {
@@ -498,89 +524,6 @@ class FotoActivity : ComposeActivity() {
         }
     }
 
-    @Composable
-    fun Bottom() {
-        Clickable(onClick = { /* consume clicks */}) {
-            Crossfade(state.fullscreen.value.not() && state.foto.value.notnil()) {
-                when (it) {
-                    true ->
-                        Surface(elevation = 1.dp, color = colors.primaryVariant) {
-                            Padding(
-                                padding = EdgeInsets(left = 16.dp, right = 16.dp, top = 14.dp, bottom = 14.dp)
-                            ) {
-                                BottomBar()
-                            }
-                        }
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun BottomBar() {
-        FlexRow(
-            modifier = ExpandedWidth,
-            crossAxisAlignment = CrossAxisAlignment.Center
-        ) {
-            val locked = (state.busy.value && fotoModel.isExecuting) || autoLoad
-            expanded(0.5F) {
-                val hd = state.hd.value
-                Button(
-                    style = when (hd) {
-                        true ->
-                            OutlinedButtonStyle(
-                                color = colors.primary,
-                                contentColor = colors.onPrimary
-                            )
-                        else ->
-                            OutlinedButtonStyle(
-                                color = Gray.copy(alpha = 127F),
-                                contentColor = LightGray.copy(alpha = 77F)
-                            )
-                    },
-                    onClick = {
-                        fotoModel.loadWithHD(!hd)
-                    }.takeUnless { locked }
-                ) {
-                    Text(text = R.string.hd.asString().let { if (locked) it.mask() else it },
-                        style = typography.caption.copy(fontWeight = FontWeight.W300)
-                    )
-                }
-            }
-            inflexible {
-                WidthSpacer(16.dp)
-            }
-            expanded(1.2F) {
-                val date = state.foto.value?.apod?.date
-                if (locked) {
-                    Button(
-                        text = (date ?: "__").mask()
-                    )
-                } else {
-                    val onClick = {
-                        selectDate(state.date.value) {
-                            fotoModel.loadWithDate(it)
-                        }
-                    }
-                    date nil {
-                        Button(
-                            onClick = onClick
-                        ) {
-                            val tintColor = colors.onPrimary.copy(alpha = 55F)
-                            DrawVector(
-                                +vectorResource(R.drawable.ic_calendar_today),
-                                tintColor = tintColor
-                            )
-                        }
-                    } ?: Button(
-                        text = date!!,
-                        onClick = onClick
-                    )
-                }
-            }
-        }
-    }
-
     @NeedsPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     fun save() = onWriteAvailable(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)) {
         saveModel.save(fotoModel.foto!!, it)
@@ -591,16 +534,18 @@ class FotoActivity : ComposeActivity() {
         onRequestPermissionsResult(requestCode, grantResults)
     }
 
-    private fun processAction(id: Int) {
+    private fun execute(id: Int) {
         when (id) {
-            R.drawable.ic_more_horiz ->
-                uiOverflowState.start(lifecycleScope, initial = true, final = false, finalDelay = 3000L)
-            R.drawable.ic_fullscreen ->
-                fotoModel.enterFullscreen()
-            R.drawable.ic_fullscreen_exit -> {
-                uiKeysState.reset()
-                fotoModel.exitFullscreen()
-            }
+            R.drawable.ic_calendar_today ->
+                selectDate(
+                    state.date.value,
+                    // on some configurations system bottom nav will appear on Dialog showing / dismissing
+                    onShow = { d -> (d is AlertDialog) tru { Fullscreen.enterOn(d as AlertDialog) } },
+                    onDismiss = { enterFullscreen() }
+                ) {
+                    fotoModel.onSwitchUi(to = Ui.Clear)
+                    fotoModel.loadWithDate(it)
+                }
             R.drawable.ic_share ->
                 fotoModel.foto!!.also { foto ->
                     ShareCompat.IntentBuilder.from(this)
@@ -609,38 +554,26 @@ class FotoActivity : ComposeActivity() {
                         .setType("image/*")
                         .startChooser()
                 }
-            R.drawable.ic_details ->
-                fotoModel.foto?.also { foto ->
-                    showMsg(foto.apod.title, foto.apod.description)
-                }
             R.drawable.ic_photo -> start<FotoViewActivity>()
             R.drawable.ic_sd_storage -> saveWithPermissionCheck()
         }
     }
-
-    private fun tryAutoFullscreen(resetUserAction: Bool = false) {
-        resetUserAction tru {
-            hasUserAction = false
-        }
-        lifecycleScope.launchWhenStarted {
-            delay(3000)
-            (fullscreen.isnil() && !hasUserAction) tru {
-                fotoModel.enterFullscreen()
-            }
-        }
-    }
-
-    override fun onUserInteraction() { super.onUserInteraction()
-        lg { "user interaction" }
-        hasUserAction = true
-    }
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Bool {
-        if (state.fullscreen.value) {
-            processAction(R.drawable.ic_fullscreen_exit)
+        if (state.ui.detailed) {
+            fotoModel.onSwitchUi(to = Ui.Clear)
             return true
         }
         return super.onKeyDown(keyCode, event)
     }
+
+    override fun onResume() {
+        super.onResume()
+        enterFullscreen()
+    }
+
+    private fun enterFullscreen() = Fullscreen.enterOn(this)
+
+    val State<Ui>.detailed get() = this.value === Ui.Detailed
+    val State<Ui>.clear get() = this.value === Ui.Clear
 
 }

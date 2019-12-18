@@ -13,14 +13,13 @@ data class FotoState(
     val foto: State<Foto?>,
     val hd: State<Bool>,
     val date: State<Calendar?>,
-    val fullscreen: State<Bool>
+    val ui: State<FotoViewModel.Ui>
 )
 
-fun FotoViewModel.createState() =
-    FotoState(
-        busy = +state { isExecuting },
-        foto = +state { foto },
-        hd = +state { hd.value!! },
-        date = +state { date.value },
-        fullscreen = +state { fullscreen }
-    )
+fun FotoViewModel.createState() = FotoState(
+    busy = +state { isExecuting },
+    foto = +state { foto },
+    hd = +state { hd.value!! },
+    date = +state { date.value },
+    ui = +state { ui }
+)
