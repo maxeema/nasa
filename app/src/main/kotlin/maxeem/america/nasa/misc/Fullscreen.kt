@@ -20,21 +20,22 @@ data class Fullscreen private constructor(
         fun enterOn(a: AlertDialog) = a.window?.let { w -> enterOn(w) }
         fun enterOn(window: Window): Fullscreen {
             lg { "fullscreen enter on"}
-                val view = window.decorView.findViewById<ViewGroup>(android.R.id.content)
-                    ?: window.decorView
-                val winParams = window.attributes
+            val view = window.decorView.findViewById<ViewGroup>(android.R.id.content)
+                ?: window.decorView
+            val winParams = window.attributes
 
-                val restore = Fullscreen(view.systemUiVisibility, winParams.flags)
+            val restore = Fullscreen(view.systemUiVisibility, winParams.flags)
 
-                view.systemUiVisibility =
-                    View.SYSTEM_UI_FLAG_LOW_PROFILE or View.SYSTEM_UI_FLAG_IMMERSIVE or
-                            View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            view.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_LOW_PROFILE or View.SYSTEM_UI_FLAG_IMMERSIVE or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 
-                winParams.flags = winParams.flags or WindowManager.LayoutParams.FLAG_FULLSCREEN
-                window.attributes = winParams
+            winParams.flags = winParams.flags or WindowManager.LayoutParams.FLAG_FULLSCREEN
+            window.attributes = winParams
 
-                return restore
+            return restore
         }
 
         fun backOn(window: Window, restore: Fullscreen) {
