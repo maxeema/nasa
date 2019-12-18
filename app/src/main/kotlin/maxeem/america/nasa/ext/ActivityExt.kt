@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Environment
 import android.widget.Toast
@@ -27,6 +28,9 @@ inline fun <reified T: Activity>
             putExtras(extras)
         }
     })
+
+fun ComposeActivity.inLandscape() =
+    resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
 fun ComposeActivity.showMsg(title: Str? = null, msg: Str? = null) {
     AlertDialog.Builder(this)

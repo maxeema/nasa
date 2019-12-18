@@ -14,6 +14,7 @@ import androidx.core.app.ShareCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.ui.animation.Crossfade
+import androidx.ui.core.Modifier
 import androidx.ui.core.Text
 import androidx.ui.core.dp
 import androidx.ui.core.setContent
@@ -37,13 +38,13 @@ import androidx.ui.res.vectorResource
 import androidx.ui.text.font.FontWeight
 import androidx.ui.text.style.TextOverflow
 import kotlinx.android.parcel.Parcelize
+import kotlinx.coroutines.delay
 import maxeem.america.common.Bool
 import maxeem.america.common.Consumable
 import maxeem.america.common.Str
 import maxeem.america.nasa.R
 import maxeem.america.nasa.domain.MediaType
 import maxeem.america.nasa.ext.*
-import maxeem.america.nasa.misc.Foto
 import maxeem.america.nasa.misc.Fullscreen
 import maxeem.america.nasa.misc.ImagePalette
 import maxeem.america.nasa.ui.models.FotoSaveViewModel
@@ -186,17 +187,15 @@ class FotoActivity : ComposeActivity() {
 
     @Composable
     fun Atop() {
-        val foto = state.foto.value
-        if (state.ui.detailed && foto != null) {
-            Container(modifier = Expanded) {
-                Surface(elevation = 1.dp, color = Black.copy(75F) ) {
-                    Clickable(onClick = { fotoModel.onSwitchUi(to = Ui.Clear) } ) {
-                        Padding(
-                            padding = EdgeInsets(left = 16.dp, right = 16.dp, top = 24.dp, bottom = 24.dp)
-                        ) {
-                            Crossfade(foto) {
-                                Description(it)
-                            }
+        (state.ui.detailed && state.foto.value.notnil()) tru {
+            Clickable(onClick = { fotoModel.onSwitchUi(to = Ui.Clear) } ) {
+                Container(modifier = Expanded) {
+                    Surface(
+                        elevation = 1.dp,
+                        color = Black.copy(75F)
+                    ) {
+                        Padding(padding = EdgeInsets(left = 24.dp, right = 24.dp, top = 32.dp, bottom = 32.dp)) {
+                            Description()
                         }
                     }
                 }
@@ -205,12 +204,17 @@ class FotoActivity : ComposeActivity() {
     }
 
     @Composable
-    fun Description(foto: Foto) {
+    fun Description() {
         FlexColumn(
+            modifier = inLandscape() tru { MaxWidth(480.dp) } ?: Modifier.None,
             crossAxisSize = LayoutSize.Expand,
             mainAxisAlignment = MainAxisAlignment.SpaceEvenly,
             crossAxisAlignment = CrossAxisAlignment.Stretch
         ) {
+            val foto = state.foto.value!!
+            inflexible {
+                HeightSpacer(8.dp)
+            }
             inflexible {
                 Text(
                     text = foto.apod.title,
@@ -263,8 +267,9 @@ class FotoActivity : ComposeActivity() {
                         R.drawable.ic_calendar_today,
                         R.drawable.ic_sd_storage
                     ).forEach { id ->
-                        Action(id,
-                            enabled = when(id) {
+                        Action(
+                            id,
+                            enabled = when (id) {
                                 R.drawable.ic_sd_storage -> saveModel.isExecuting.not()
                                 R.drawable.ic_calendar_today -> fotoModel.isExecuting.not()
                                 else -> true
@@ -353,7 +358,7 @@ class FotoActivity : ComposeActivity() {
             modifier = Spacing(
                 top = 10.dp, bottom = 10.dp,
                 left = 16.dp, right = 16.dp
-            )
+            ) wraps { inLandscape() tru { MaxWidth(360.dp) } ?: Modifier.None }()
         ) {
             FlexRow(
                 modifier = ExpandedWidth wraps Spacing(20.dp),
@@ -540,7 +545,13 @@ class FotoActivity : ComposeActivity() {
                 selectDate(
                     state.date.value,
                     // on some configurations system bottom nav will appear on Dialog showing / dismissing
-                    onShow = { d -> (d is AlertDialog) tru { Fullscreen.enterOn(d as AlertDialog) } },
+                    onShow = { d ->
+                        lifecycleScope.launchWhenStarted {
+                            (d is AlertDialog) tru { Fullscreen.enterOn(d as AlertDialog) }
+                            delay(100)
+                            enterFullscreen()
+                        }
+                    },
                     onDismiss = { enterFullscreen() }
                 ) {
                     fotoModel.onSwitchUi(to = Ui.Clear)
