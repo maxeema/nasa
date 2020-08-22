@@ -5,6 +5,7 @@
     <string name="hd">HD</string>
     <string name="date_param">Date</string>
     <string name="reload">Reload</string>
+    <string name="select_date">Select Date</string>
     <string name="info">Info</string>
     <string name="welcome">Welcome to NASA pictures</string>
     <string name="save">Save</string>
@@ -22,7 +23,10 @@
     <string name="fullscreen">Fullscreen</string>
     <string name="action_error">Can\'t complete action</string>
     <string name="bad_response">Bad response - %s</string>
-    <string name="no_foto_at_the_date">No photo for the date</string>
+    <string name="server_error">Server error - %s</string>
+    <string name="no_foto_for_the_date">No photo for the date</string>
+    <string name="no_foto_for_the_date_formatted">No photo at %s</string>
+    <string name="no_foto_for_today">No photo for today</string>
     <string name="response_process_error">Can\'t process response</string>
     <string name="network_error">Network error</string>
     <string name="load_foto_error">Can\'t load photo</string>
