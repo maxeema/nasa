@@ -19,13 +19,15 @@ fun ResponseBody?.extractError(code: Int) : RepoResult.Failure =
     }.fold(
         onSuccess = { info ->
             when (info.type) {
-                NasaError.Type.OutOfRange, NasaError.Type.InternalServer -> R.string.no_foto_at_the_date.asString()
+                NasaError.Type.OutOfRange -> R.string.no_foto_for_the_date.asString()
+                NasaError.Type.InternalServer -> R.string.server_error.asString()
                 NasaError.Type.ApiKeyMissing -> R.string.api_key_issue.asString()
                 else -> R.string.bad_response.asString(code)
             }.let { msg ->
                 RepoResult.Failure.Api(
                     msg = msg,
-                    desc = info.text
+                    desc = info.text,
+                    info = info
                 )
             }
         },

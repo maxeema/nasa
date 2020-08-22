@@ -4,12 +4,11 @@ import androidx.lifecycle.MutableLiveData
 import maxeem.america.common.Bool
 import maxeem.america.common.ConsumableLiveData
 import maxeem.america.common.Str
+import maxeem.america.nasa.Conf
 import maxeem.america.nasa.R
 import maxeem.america.nasa.domain.UseCases
 import maxeem.america.nasa.ext.*
-import maxeem.america.nasa.misc.AppException
-import maxeem.america.nasa.misc.Foto
-import maxeem.america.nasa.misc.ImageInfo
+import maxeem.america.nasa.misc.*
 import java.util.*
 
 class FotoViewModel : RepoViewModel() {
@@ -65,7 +64,29 @@ class FotoViewModel : RepoViewModel() {
                 }
                 success()
             },
-            failure = failure
+            failure = {
+                val err = it.ensureApp()
+                if (err is RepoAppException && err.isDateRangeError()) {
+                    if (date == null) {
+                        status.asMutable().value = null
+                        loadWithDate(Calendar.getInstance().apply {
+                            add(Calendar.DAY_OF_MONTH, -1)
+                        })
+                    } else {
+                        val parsedDate = Conf.dateFormatter.parse(date)!!
+                        val formattedHumanDate = Conf.dateFormatterHuman.format(parsedDate)
+//                        val formattedHumanTodayDate = Conf.dateFormatterHuman.format(Calendar.getInstance().time)
+//                        if (formattedHumanTodayDate == formattedHumanDate) {
+//                            err.msg = R.string.no_foto_for_today.asString()
+//                        } else {
+                            err.msg = R.string.no_foto_for_the_date_formatted.asString(formattedHumanDate)
+//                        }
+                        status.asMutable().value = ModelStatus.of(err, dateIssue = true)
+                    }
+                } else {
+                    status.asMutable().value = ModelStatus.of(err, dateIssue = false)
+                }
+            }
         ) { apod ->
             apod.mediaType.isUnknown tru {
                 throw AppException(R.string.unsupported_media.asString(apod.mediaType.unknown.value))

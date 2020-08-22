@@ -9,6 +9,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Environment
 import android.widget.Toast
+import maxeem.america.common.Bool
 import maxeem.america.common.Str
 import maxeem.america.nasa.R
 import maxeem.america.nasa.app
@@ -38,10 +39,10 @@ fun ComposeActivity.showMsg(title: Str? = null, msg: Str? = null) {
         .setPositiveButton(R.string.ok.asString()) { _, _ -> }
         .show()
 }
-fun ComposeActivity.handleError(error: AppException) {
+fun ComposeActivity. handleError(error: AppException, longToast: Bool = false) {
     error.err?.printStackTrace()
     error.desc?.also { app.lg { it } }
-    Toast.makeText(this, error.msg, Toast.LENGTH_SHORT).show()
+    Toast.makeText(this, error.msg, if (longToast) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
 }
 
 fun ComposeActivity.selectDate(calendar: Calendar?,

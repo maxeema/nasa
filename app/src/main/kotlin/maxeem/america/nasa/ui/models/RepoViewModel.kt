@@ -9,6 +9,7 @@ import maxeem.america.common.Consumable
 import maxeem.america.common.ConsumableLiveData
 import maxeem.america.nasa.ext.*
 import maxeem.america.nasa.misc.AppException
+import maxeem.america.nasa.misc.RepoAppException
 import maxeem.america.nasa.repo.RepoResult
 import kotlin.time.measureTime
 
@@ -23,7 +24,11 @@ abstract class RepoViewModel : ViewModel() {
     val isExecuting get() = status.value == ModelStatus.Busy
 
     protected fun <V, T> action(call: suspend ()->RepoResult<V>,
-                                success: suspend (T)->Unit, failure: ((AppException)->Unit)? = null,
+                                success: suspend (T)->Unit,
+                                failure: (Throwable)->Unit = {
+                                    val err = it.ensureApp()
+                                    status.asMutable().value = ModelStatus of err
+                                },
                                 process: suspend CoroutineScope.(V)->T = { it as T}) {
         if (isExecuting) return
         status.asMutable().value = ModelStatus.Busy
@@ -57,11 +62,7 @@ abstract class RepoViewModel : ViewModel() {
                     status.asMutable().value = ModelStatus of it
                     success(it)
                 },
-                onFailure = {
-                    val err = it.ensureApp()
-                    status.asMutable().value = ModelStatus of err
-                    failure?.invoke(err)
-                }
+                onFailure = failure
             )
         }
     }

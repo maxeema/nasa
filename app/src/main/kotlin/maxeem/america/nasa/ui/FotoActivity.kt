@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Parcelable
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.compose.Composable
 import androidx.compose.State
@@ -42,6 +43,7 @@ import kotlinx.coroutines.delay
 import maxeem.america.common.Bool
 import maxeem.america.common.Consumable
 import maxeem.america.common.Str
+import maxeem.america.nasa.Conf
 import maxeem.america.nasa.R
 import maxeem.america.nasa.domain.MediaType
 import maxeem.america.nasa.ext.*
@@ -57,6 +59,7 @@ import maxeem.america.nasa.ui.states.createState
 import maxeem.america.nasa.util.open
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.RuntimePermissions
+import java.util.*
 
 @RuntimePermissions
 class FotoActivity : ComposeActivity() {
@@ -145,7 +148,18 @@ class FotoActivity : ComposeActivity() {
                 uiKeysState.reset()
             }
             status.isBad.tru {
-                handleError(status.bad)
+                if (fotoModel.foto == null && state.foto.value == null) {
+                    execute(R.drawable.ic_calendar_today)
+                    handleError(status.bad, longToast = true)
+                } else {
+                    handleError(status.bad, longToast = false)
+                }
+            }
+            status.isOk.tru {
+                val date = fotoModel.date.value
+                date?.also {
+                    Toast.makeText(this, Conf.dateFormatterHuman.format(it.time), Toast.LENGTH_SHORT).show()
+                }
             }
             invalidateOptionsMenu()
             autoLoad = false
@@ -338,8 +352,8 @@ class FotoActivity : ComposeActivity() {
             foto.isnil() ->
                 Center {
                     Button(
-                        text = R.string.reload.asString(),
-                        onClick = fotoModel::load,
+                        text = R.string.select_date.asString(),
+                        onClick = { execute(R.drawable.ic_calendar_today) },
                         style = OutlinedButtonStyle(
                             color = White.copy(alpha = 200F),
                             contentColor = colors.onBackground

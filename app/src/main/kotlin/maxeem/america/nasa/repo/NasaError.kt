@@ -26,7 +26,7 @@ object NasaError {
                 when {
                     msg.contains("internal", ignoreCase = true) -> Info(Type.InternalServer, msg)
                     msg.contains("api_key", ignoreCase = true) -> Info(Type.ApiKeyMissing, msg)
-                    msg.contains("date ", ignoreCase = true) -> Info(Type.OutOfRange, msg)
+                    msg.contains("date", ignoreCase = true) -> Info(Type.OutOfRange, msg)
                     else -> Info(Type.Raw, str)
                 }
             },

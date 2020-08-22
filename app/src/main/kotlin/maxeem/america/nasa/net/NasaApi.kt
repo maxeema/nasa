@@ -21,11 +21,33 @@ object NasaApi {
         addConverterFactory(
             MoshiConverterFactory.create(Moshi.Builder().add(KotlinJsonAdapterFactory()).build())
         )
-        if (Conf.Log.HTTP_LEVEL > HttpLoggingInterceptor.Level.NONE) {
-            client(OkHttpClient.Builder().addInterceptor(HttpLoggingInterceptor().apply {
-                level = Conf.Log.HTTP_LEVEL
-            }).build())
-        }
+        client(OkHttpClient.Builder().apply {
+//            addInterceptor(MockInterceptor())
+            if (Conf.Log.HTTP_LEVEL > HttpLoggingInterceptor.Level.NONE) {
+                addInterceptor(HttpLoggingInterceptor().apply {
+                    level = Conf.Log.HTTP_LEVEL
+                })
+            }
+        }.build())
     }.build()
 
 }
+
+//class MockInterceptor : Interceptor {
+//
+//    override fun intercept(chain: Interceptor.Chain): Response {
+//println("intercept: $chain")
+//        val responseString = "{\"code\":404,\"msg\":\"No foto for date: today.\",\"service_version\":\"v1\"}"
+//        return chain.proceed(chain.request())
+//            .newBuilder()
+//            .code(404)
+//            .protocol(Protocol.HTTP_2)
+//            .message(responseString)
+//            .body(
+//                ResponseBody.create(
+//                    "application/json".toMediaType(),
+//                    responseString.toByteArray()))
+//            .addHeader("content-type", "application/json")
+//            .build()
+//    }
+//}

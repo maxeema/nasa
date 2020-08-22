@@ -1,19 +1,20 @@
 package maxeem.america.nasa.ui.models
 
+import maxeem.america.common.Bool
 import maxeem.america.common.Str
 import maxeem.america.nasa.misc.AppException
 
 sealed class ModelStatus(val name: Str) {
 
     class  Ok<T>(val wrap: T): ModelStatus("okay")
-    class  Bad(val wrap: AppException): ModelStatus("bad")
+    class  Bad(val wrap: AppException, dateIssue: Bool = false): ModelStatus("bad")
     object Busy : ModelStatus("busy")
 
     override fun toString(): String = name
 
     companion object {
         infix fun <T>of(value: T) = ModelStatus.Ok(value)
-        infix fun of(exception: AppException) = Bad(exception)
+        fun of(exception: AppException, dateIssue: Bool) = Bad(exception, dateIssue)
     }
 
     val isOk get() = this is Ok<*>
