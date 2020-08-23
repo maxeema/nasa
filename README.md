@@ -23,8 +23,9 @@ Day Picture screen
 
 ## Screenshots
 
-![Screenshot](screens/APoD1.png) ![Screenshot](screens/APoD2.png)
+![Screenshot](screens/APoD6.png) ![Screenshot](screens/APoD2.png)
 ![Screenshot](screens/APoD3.png) ![Screenshot](screens/APoD4.png)
+![Screenshot](screens/APoD5.png) ![Screenshot](screens/APoD1.png)
 
 
 © iMax (Maxeem) Shemetov, 2020
