@@ -1,6 +1,5 @@
 <resources>
-    <string name="app_name">NASA Pics</string>
-    <string name="day_foto">Day Photo</string>
+    <string name="app_name">APoD</string>
     <string name="gallery">Gallery</string>
     <string name="hd">HD</string>
     <string name="date_param">Date</string>

@@ -1,6 +1,6 @@
-# NASA Pics
+# APoD
 
-Shows Astronomy Picture of the Day
+Shows NASA's Astronomy Picture of the Day
 
 Web https://apod.nasa.gov/apod
 
@@ -23,12 +23,8 @@ Day Picture screen
 
 ## Screenshots
 
-![Screenshot1](screenshots/NASA%20Pics%20-%20screen%201.png)
-
-![Screenshot2](screenshots/NASA%20Pics%20-%20screen%202.png)
-
-![Screenshot3](screenshots/NASA%20Pics%20-%20screen%203.png)
+![Screenshot](screens/APoD1.png) ![Screenshot](screens/APoD2.png)
+![Screenshot](screens/APoD3.png) ![Screenshot](screens/APoD4.png)
 
 
-
-© Maxeem America, 2019
+© iMax (Maxeem) Shemetov, 2020
