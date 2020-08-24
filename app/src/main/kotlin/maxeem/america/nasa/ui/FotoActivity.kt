@@ -59,7 +59,6 @@ import maxeem.america.nasa.ui.states.createState
 import maxeem.america.nasa.util.open
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.RuntimePermissions
-import java.util.*
 
 @RuntimePermissions
 class FotoActivity : ComposeActivity() {
@@ -545,7 +544,12 @@ class FotoActivity : ComposeActivity() {
 
     @NeedsPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
     fun save() = onWriteAvailable(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)) {
-        saveModel.save(fotoModel.foto!!, it)
+        var foto = fotoModel.foto!!
+        if (!foto.hd) {
+            // for saving use hd resolution
+            foto = foto.copy(hd = true, url = foto.apod.hdUrl ?: foto.url)
+        }
+        saveModel.save(foto, it)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<Str>, grantResults: IntArray) {
@@ -580,7 +584,10 @@ class FotoActivity : ComposeActivity() {
                         .startChooser()
                 }
             R.drawable.ic_photo -> start<FotoViewActivity>()
-            R.drawable.ic_sd_storage -> saveWithPermissionCheck()
+            R.drawable.ic_sd_storage -> {
+                fotoModel.onSwitchUi(to = Ui.Clear)
+                saveWithPermissionCheck()
+            }
         }
     }
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Bool {
