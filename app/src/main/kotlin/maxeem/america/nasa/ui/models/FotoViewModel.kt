@@ -35,7 +35,8 @@ class FotoViewModel : RepoViewModel() {
             value?.also { fotoEvent.set(value) }
         }
 
-    val hd = MutableLiveData(true).asImmutable()
+    // use hd == false by default cuz some hd photos so huge that app crashes
+    val hd = MutableLiveData(false).asImmutable()
     val date = MutableLiveData<Calendar>().asImmutable()
 
     val uiEvent = ConsumableLiveData<Ui>()
